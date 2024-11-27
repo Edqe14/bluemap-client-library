@@ -810,6 +810,22 @@ export class BlueMapApp {
     //     return true;
     // }
 
+    setPositions(x, y, z, distance = 0, rotation = 0, angle = 0, tilt = 1.5, ortho = 0) {
+        const controls = this.mapViewer.controlsManager;
+        controls.controls = null;
+
+        controls.position.x = x;
+        controls.position.y = y;
+        controls.position.z = z;
+        controls.distance = distance;
+        controls.rotation = rotation;
+        controls.angle = angle;
+        controls.tilt = tilt;
+        controls.ortho = ortho;
+
+        this.mapViewer.updateLoadedMapArea();
+    }
+
     mapInteraction = event => {
         if (event.detail.data.doubleTap) {
             let cm = this.mapViewer.controlsManager;
