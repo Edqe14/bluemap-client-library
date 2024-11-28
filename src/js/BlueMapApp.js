@@ -49,7 +49,7 @@ export class BlueMapApp {
      * }} Options
      * 
      * @param rootElement {Element}
-     * @param options {Options}
+     * @param options {Partial<Options>}
      */
     constructor(rootElement, options = {}) {
         /**
@@ -434,7 +434,7 @@ export class BlueMapApp {
             map.data.mapDataRoot + "/assets/playerheads/",
             this.events
         );
-        this.playerMarkerManager.enabled = this.settings.showPlayerHeads;
+        this.playerMarkerManager.enabled = this.options.showPlayerHeads;
         this.playerMarkerManager.setAutoUpdateInterval(0);
         return this.playerMarkerManager.update()
             .then(() => {
@@ -554,6 +554,10 @@ export class BlueMapApp {
         this.appState.controls.state = "flat";
     }
 
+    /**
+     * @param {number} transition 
+     * @param {number|undefined} targetY 
+     */
     setFreeFlight(transition = 0, targetY = undefined) {
         if (!this.mapViewer.map) return;
         if (!this.mapViewer.map.data.freeFlightView) return;
