@@ -43,7 +43,9 @@ export class BlueMapApp {
      *  showPlayerHeads: boolean,
      *  baseUrl: string,
      *  defaultMap: string,
-     *  showPopupMarker: boolean
+     *  showPopupMarker: boolean,
+     *  ignoredMarkerSets: string[],
+     *  disableMovement: boolean
      * }} Options
      * 
      * @param rootElement {Element}
@@ -58,14 +60,17 @@ export class BlueMapApp {
             baseUrl: "",
             defaultMap: null,
             showPopupMarker: true,
+            enableKeyboardControls: true,
+            ignoredMarkerSets: [],
+            disableMovement: false,
             ...options
         });
         this.events = rootElement;
 
         this.mapViewer = new MapViewer(rootElement, this.events);
 
-        this.mapControls = new MapControls(this.mapViewer.renderer.domElement, rootElement);
-        this.freeFlightControls = new FreeFlightControls(this.mapViewer.renderer.domElement);
+        this.mapControls = new MapControls(this.mapViewer.renderer.domElement, rootElement, this.options);
+        this.freeFlightControls = new FreeFlightControls(this.mapViewer.renderer.domElement, this.options);
 
         /** @type {PlayerMarkerManager} */
         this.playerMarkerManager = null;
@@ -111,7 +116,7 @@ export class BlueMapApp {
                 invertMouse: false,
                 pauseTileLoading: false
             },
-            menu: this.mainMenu,
+            // menu: this.mainMenu,
             maps: [],
             theme: null,
             screenshot: {
@@ -228,7 +233,6 @@ export class BlueMapApp {
 
                 let matchingMap = await this.findPlayerMap(player.playerUuid)
                 if (matchingMap) {
-                    this.mainMenu.closeAll();
                     await this.switchMap(matchingMap.data.id, false);
                     let playerMarker = this.playerMarkerManager.getPlayerMarker(player.playerUuid);
                     if (playerMarker && this.mapViewer.controlsManager.controls.followPlayerMarker)
@@ -471,11 +475,11 @@ export class BlueMapApp {
 
     initGeneralEvents() {
         //close menu on fullscreen
-        document.addEventListener("fullscreenchange", evt => {
-            if (document.fullscreenElement) {
-                this.mainMenu.closeAll();
-            }
-        });
+        // document.addEventListener("fullscreenchange", evt => {
+        //     if (document.fullscreenElement) {
+        //         this.mainMenu.closeAll();
+        //     }
+        // });
     }
 
     setPerspectiveView(transition = 0, minDistance = 5) {
@@ -812,7 +816,6 @@ export class BlueMapApp {
 
     setPositions(x, y, z, distance = 0, rotation = 0, angle = 0, tilt = 1.5, ortho = 0) {
         const controls = this.mapViewer.controlsManager;
-        controls.controls = null;
 
         controls.position.x = x;
         controls.position.y = y;

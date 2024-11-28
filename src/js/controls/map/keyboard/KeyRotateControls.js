@@ -46,7 +46,8 @@ export class KeyRotateControls {
      * @param speed {number}
      * @param stiffness {number}
      */
-    constructor(target, speed, stiffness) {
+    constructor(target, speed, stiffness, options = {}) {
+        this.options = options;
         this.target = target;
         this.manager = null;
 
@@ -102,10 +103,14 @@ export class KeyRotateControls {
      */
     onKeyDown = evt => {
         if (KeyCombination.oneDown(evt, ...KeyRotateControls.KEYS.LEFT)){
+            if (this.options.disableMovement) return;
+
             this.left = true;
             evt.preventDefault();
         }
         if (KeyCombination.oneDown(evt, ...KeyRotateControls.KEYS.RIGHT)){
+            if (this.options.disableMovement) return;
+
             this.right = true;
             evt.preventDefault();
         }

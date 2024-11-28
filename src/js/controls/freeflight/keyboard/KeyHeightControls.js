@@ -45,7 +45,8 @@ export class KeyHeightControls {
      * @param speed {number}
      * @param stiffness {number}
      */
-    constructor(target, speed, stiffness) {
+    constructor(target, speed, stiffness, options = {}) {
+        this.options = options;
         this.target = target;
         this.manager = null;
 
@@ -101,10 +102,14 @@ export class KeyHeightControls {
      */
     onKeyDown = evt => {
         if (KeyCombination.oneUp(evt, ...KeyHeightControls.KEYS.UP)){
+            if (this.options.disableMovement) return;
+
             this.up = true;
             evt.preventDefault();
         }
         else if (KeyCombination.oneUp(evt, ...KeyHeightControls.KEYS.DOWN)){
+            if (this.options.disableMovement) return;
+
             this.down = true;
             evt.preventDefault();
         }

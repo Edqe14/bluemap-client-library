@@ -33,8 +33,10 @@ export class NormalMarkerManager extends MarkerManager {
      * @param fileUrl {string} - The marker file from which this manager updates its markers
      * @param events {EventTarget}
      */
-    constructor(root, fileUrl, events = null) {
+    constructor(root, fileUrl, events = null, options = {}) {
         super(root, fileUrl, events);
+
+        this.options = options;
     }
 
     /**
@@ -44,12 +46,12 @@ export class NormalMarkerManager extends MarkerManager {
      * @returns {boolean}
      */
     updateFromData(markerData) {
-        this.root.updateMarkerSetsFromData(markerData, [PLAYER_MARKER_SET_ID, "bm-popup-set"]);
+        this.root.updateMarkerSetsFromData(markerData, [PLAYER_MARKER_SET_ID, "bm-popup-set", ...(this.options.ignoredMarkerSets || [])]);
         return true;
     }
 
     clear() {
-        this.root.updateMarkerSetsFromData({}, [PLAYER_MARKER_SET_ID, "bm-popup-set"]);
+        this.root.updateMarkerSetsFromData({}, [PLAYER_MARKER_SET_ID, "bm-popup-set", ...(this.options.ignoredMarkerSets || [])]);
     }
 
 }

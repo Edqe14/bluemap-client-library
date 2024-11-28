@@ -41,7 +41,8 @@ export class FreeFlightControls {
     /**
      * @param target {Element}
      */
-    constructor(target) {
+    constructor(target, options = {}) {
+        this.options = options;
         this.target = target;
         this.manager = null;
 
@@ -52,8 +53,8 @@ export class FreeFlightControls {
         this.hammer = new Manager(this.target);
         this.initializeHammer();
 
-        this.keyMove = new KeyMoveControls(this.target, 0.5, 0.1);
-        this.keyHeight = new KeyHeightControls(this.target, 0.5, 0.2);
+        this.keyMove = new KeyMoveControls(this.target, 0.5, 0.1, this.options);
+        this.keyHeight = new KeyHeightControls(this.target, 0.5, 0.2, this.options);
         this.mouseRotate = new MouseRotateControls(this.target, 1.5, -2, -1.5, 0.5);
         this.mouseAngle = new MouseAngleControls(this.target, 1.5, -2, -1.5, 0.5);
         this.touchPan = new TouchPanControls(this.target, this.hammer, 5, 0.15);

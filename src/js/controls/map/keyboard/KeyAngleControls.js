@@ -46,7 +46,8 @@ export class KeyAngleControls {
      * @param speed {number}
      * @param stiffness {number}
      */
-    constructor(target, speed, stiffness) {
+    constructor(target, speed, stiffness, options = {}) {
+        this.options = {};
         this.target = target;
         this.manager = null;
 
@@ -102,10 +103,14 @@ export class KeyAngleControls {
      */
     onKeyDown = evt => {
         if (KeyCombination.oneDown(evt, ...KeyAngleControls.KEYS.UP)){
+            if (this.options.disableMovement) return;
+
             this.up = true;
             evt.preventDefault();
         }
         if (KeyCombination.oneDown(evt, ...KeyAngleControls.KEYS.DOWN)){
+            if (this.options.disableMovement) return;
+
             this.down = true;
             evt.preventDefault();
         }

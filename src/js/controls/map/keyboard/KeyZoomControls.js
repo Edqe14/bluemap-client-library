@@ -44,7 +44,8 @@ export class KeyZoomControls {
      * @param speed {number}
      * @param stiffness {number}
      */
-    constructor(target, speed, stiffness) {
+    constructor(target, speed, stiffness, options = {}) {
+        this.options = options;
         this.target = target;
         this.manager = null;
 
@@ -100,10 +101,14 @@ export class KeyZoomControls {
      */
     onKeyDown = evt => {
         if (KeyCombination.oneDown(evt, ...KeyZoomControls.KEYS.IN)){
+            if (this.options.disableMovement) return;
+
             this.in = true;
             evt.preventDefault();
         }
         if (KeyCombination.oneDown(evt, ...KeyZoomControls.KEYS.OUT)){
+            if (this.options.disableMovement) return;
+
             this.out = true;
             evt.preventDefault();
         }
