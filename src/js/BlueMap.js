@@ -90,6 +90,7 @@ export * from "./util/Stats";
 export * from "./util/Utils";
 
 export * from "./BlueMapApp";
+export * from "./MainMenu";
 export * from "./MapViewer";
 export * from "./PopupMarker";
 export * from "./Utils";

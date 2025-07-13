@@ -55,8 +55,7 @@ export class KeyMoveControls {
      * @param speed {number}
      * @param stiffness {number}
      */
-    constructor(target, speed, stiffness, options = {}) {
-        this.options = options;
+    constructor(target, speed, stiffness) {
         this.target = target;
         this.manager = null;
 
@@ -120,26 +119,18 @@ export class KeyMoveControls {
      */
     onKeyDown = evt => {
         if (KeyCombination.oneDown(evt, ...KeyMoveControls.KEYS.UP)){
-            if (this.options.disableMovement) return;
-
             this.up = true;
             evt.preventDefault();
         }
         if (KeyCombination.oneDown(evt, ...KeyMoveControls.KEYS.DOWN)){
-            if (this.options.disableMovement) return;
-
             this.down = true;
             evt.preventDefault();
         }
         if (KeyCombination.oneDown(evt, ...KeyMoveControls.KEYS.LEFT)){
-            if (this.options.disableMovement) return;
-
             this.left = true;
             evt.preventDefault();
         }
         if (KeyCombination.oneDown(evt, ...KeyMoveControls.KEYS.RIGHT)){
-            if (this.options.disableMovement) return;
-
             this.right = true;
             evt.preventDefault();
         }

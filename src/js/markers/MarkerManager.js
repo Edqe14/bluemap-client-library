@@ -30,7 +30,6 @@ import {alert, generateCacheHash} from "../util/Utils";
  * A manager for loading and updating markers from a file
  */
 export class MarkerManager {
-    enabled = true;
 
     /**
      * @constructor
@@ -60,11 +59,6 @@ export class MarkerManager {
         if (ms > 0) {
             let autoUpdate = () => {
                 if (this.disposed) return;
-                if (!this.enabled) {
-                    this._updateInterval = setTimeout(autoUpdate, ms);
-                    return;
-                }
-
                 this.update()
                     .then(success => {
                         if (success) {

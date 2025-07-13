@@ -29,9 +29,11 @@ import {FreeFlightControls} from "./controls/freeflight/FreeFlightControls";
 import {FileLoader, MathUtils, Vector3} from "three";
 import {Map as BlueMapMap} from "./map/Map";
 import {alert, animate, EasingFunctions, generateCacheHash} from "./util/Utils";
+import {MainMenu} from "./MainMenu";
 import {PopupMarker} from "./PopupMarker";
 import {MarkerSet} from "./markers/MarkerSet";
 import {getLocalStorage, round, setLocalStorage} from "./Utils";
+import {i18n, setLanguage} from "../i18n";
 import {PlayerMarkerManager} from "./markers/PlayerMarkerManager";
 import {NormalMarkerManager} from "./markers/NormalMarkerManager";
 import {reactive} from "vue";
@@ -39,38 +41,15 @@ import {reactive} from "vue";
 export class BlueMapApp {
 
     /**
-     * @typedef {{
-     *  showPlayerHeads: boolean,
-     *  baseUrl: string,
-     *  defaultMap: string,
-     *  showPopupMarker: boolean,
-     *  ignoredMarkerSets: string[],
-     *  disableMovement: boolean
-     * }} Options
-     * 
      * @param rootElement {Element}
-     * @param options {Partial<Options>}
      */
-    constructor(rootElement, options = {}) {
-        /**
-         * @type {Options}
-         */
-        this.options = reactive({
-            showPlayerHeads: true,
-            baseUrl: "",
-            defaultMap: null,
-            showPopupMarker: true,
-            enableKeyboardControls: true,
-            ignoredMarkerSets: [],
-            disableMovement: false,
-            ...options
-        });
+    constructor(rootElement) {
         this.events = rootElement;
 
         this.mapViewer = new MapViewer(rootElement, this.events);
 
-        this.mapControls = new MapControls(this.mapViewer.renderer.domElement, rootElement, this.options);
-        this.freeFlightControls = new FreeFlightControls(this.mapViewer.renderer.domElement, this.options);
+        this.mapControls = new MapControls(this.mapViewer.renderer.domElement, rootElement);
+        this.freeFlightControls = new FreeFlightControls(this.mapViewer.renderer.domElement);
 
         /** @type {PlayerMarkerManager} */
         this.playerMarkerManager = null;
@@ -108,6 +87,8 @@ export class BlueMapApp {
 
         this.lastCameraMove = 0;
 
+        this.mainMenu = reactive(new MainMenu());
+
         this.appState = reactive({
             controls: {
                 state: "perspective",
@@ -116,7 +97,7 @@ export class BlueMapApp {
                 invertMouse: false,
                 pauseTileLoading: false
             },
-            // menu: this.mainMenu,
+            menu: this.mainMenu,
             maps: [],
             theme: null,
             screenshot: {
@@ -132,12 +113,8 @@ export class BlueMapApp {
         // popup on click
         this.popupMarkerSet = new MarkerSet("bm-popup-set");
         this.popupMarkerSet.data.toggleable = false;
-
-        if (this.options.showPopupMarker) {
-            this.popupMarker = new PopupMarker("bm-popup", this.appState, this.events);
-            this.popupMarkerSet.add(this.popupMarker);
-        }
-
+        this.popupMarker = new PopupMarker("bm-popup", this.appState, this.events);
+        this.popupMarkerSet.add(this.popupMarker);
         this.mapViewer.markers.add(this.popupMarkerSet);
 
         this.updateLoop = null;
@@ -165,7 +142,7 @@ export class BlueMapApp {
         if (this.settings.styles) for (let styleUrl of this.settings.styles) {
             let styleElement = document.createElement("link");
             styleElement.rel = "stylesheet";
-            styleElement.href = this.options.baseUrl + styleUrl;
+            styleElement.href = styleUrl;
             alert(this.events, "Loading style: " + styleUrl, "fine");
             document.head.appendChild(styleElement);
         }
@@ -184,22 +161,18 @@ export class BlueMapApp {
             this.appState.maps.push(map.data);
         }
 
-        if (this.options.defaultMap) {
-            await this.switchMap(this.options.defaultMap);
+        // switch to map
+        try {
+            if (!await this.loadPageAddress()) {
+                if (this.maps.length > 0) await this.switchMap(this.maps[0].data.id);
+                this.resetCamera();
+            }
+        } catch (e) {
+            console.error("Failed to load map!", e);
         }
 
-        // switch to map
-        // try {
-        //     if (!await this.loadPageAddress()) {
-        //         if (this.maps.length > 0) await this.switchMap(this.maps[0].data.id);
-        //         this.resetCamera();
-        //     }
-        // } catch (e) {
-        //     console.error("Failed to load map!", e);
-        // }
-
         // map position address
-        // window.addEventListener("hashchange", this.loadPageAddress);
+        window.addEventListener("hashchange", this.loadPageAddress);
         this.events.addEventListener("bluemapCameraMoved", this.cameraMoved);
         this.events.addEventListener("bluemapMapInteraction", this.mapInteraction);
 
@@ -213,7 +186,7 @@ export class BlueMapApp {
         // load settings-scripts
         if (this.settings.scripts) for (let scriptUrl of this.settings.scripts) {
             let scriptElement = document.createElement("script");
-            scriptElement.src = this.options.baseUrl + scriptUrl;
+            scriptElement.src = scriptUrl;
             alert(this.events, "Loading script: " + scriptUrl, "fine");
             document.body.appendChild(scriptElement);
         }
@@ -233,6 +206,7 @@ export class BlueMapApp {
 
                 let matchingMap = await this.findPlayerMap(player.playerUuid)
                 if (matchingMap) {
+                    this.mainMenu.closeAll();
                     await this.switchMap(matchingMap.data.id, false);
                     let playerMarker = this.playerMarkerManager.getPlayerMarker(player.playerUuid);
                     if (playerMarker && this.mapViewer.controlsManager.controls.followPlayerMarker)
@@ -285,7 +259,7 @@ export class BlueMapApp {
         if (resetCamera || !this.mapViewer.map.hasView(this.appState.controls.state))
             this.resetCamera();
 
-        // this.updatePageAddress();
+        this.updatePageAddress();
 
         await Promise.all([
             this.initPlayerMarkerManager(),
@@ -320,7 +294,7 @@ export class BlueMapApp {
                 this.setFreeFlight();
         }
 
-        // this.updatePageAddress();
+        this.updatePageAddress();
     }
 
     /**
@@ -333,7 +307,7 @@ export class BlueMapApp {
         // create maps
         if (settings.maps !== undefined){
             let loadingPromises = settings.maps.map(mapId => {
-                let map = new BlueMapMap(mapId, this.options.baseUrl + settings.mapDataRoot + "/" + mapId, this.options.baseUrl + settings.liveDataRoot + "/" + mapId, this.loadBlocker, this.mapViewer.events);
+                let map = new BlueMapMap(mapId, settings.mapDataRoot + "/" + mapId, settings.liveDataRoot + "/" + mapId, this.loadBlocker, this.mapViewer.events);
                 maps.push(map);
 
                 return map.loadSettings(this.mapViewer.tileCacheHash)
@@ -394,7 +368,7 @@ export class BlueMapApp {
         return new Promise((resolve, reject) => {
             let loader = new FileLoader();
             loader.setResponseType("json");
-            loader.load(this.options.baseUrl + "settings.json?" + generateCacheHash(),
+            loader.load("settings.json?" + generateCacheHash(),
                 resolve,
                 () => {},
                 () => reject("Failed to load the settings.json!")
@@ -434,7 +408,6 @@ export class BlueMapApp {
             map.data.mapDataRoot + "/assets/playerheads/",
             this.events
         );
-        this.playerMarkerManager.enabled = this.options.showPlayerHeads;
         this.playerMarkerManager.setAutoUpdateInterval(0);
         return this.playerMarkerManager.update()
             .then(() => {
@@ -475,11 +448,11 @@ export class BlueMapApp {
 
     initGeneralEvents() {
         //close menu on fullscreen
-        // document.addEventListener("fullscreenchange", evt => {
-        //     if (document.fullscreenElement) {
-        //         this.mainMenu.closeAll();
-        //     }
-        // });
+        document.addEventListener("fullscreenchange", evt => {
+            if (document.fullscreenElement) {
+                this.mainMenu.closeAll();
+            }
+        });
     }
 
     setPerspectiveView(transition = 0, minDistance = 5) {
@@ -497,7 +470,7 @@ export class BlueMapApp {
         let targetY = MathUtils.lerp(this.mapViewer.map.terrainHeightAt(cm.position.x, cm.position.z) + 3, 0, targetDistance / 500);
 
         let startAngle = cm.angle;
-        let targetAngle = Math.min(Math.PI / 2, startAngle, this.mapControls.getMaxPerspectiveAngleForDistance(targetDistance));
+        let targetAngle = Math.min(Math.PI / 2, startAngle, MapControls.getMaxPerspectiveAngleForDistance(targetDistance));
 
         let startOrtho = cm.ortho;
         let startTilt = cm.tilt;
@@ -513,7 +486,7 @@ export class BlueMapApp {
             this.mapControls.reset();
             if (finished){
                 cm.controls = this.mapControls;
-                // this.updatePageAddress();
+                this.updatePageAddress();
             }
         });
 
@@ -547,17 +520,13 @@ export class BlueMapApp {
             this.mapControls.reset();
             if (finished){
                 cm.controls = this.mapControls;
-                // this.updatePageAddress();
+                this.updatePageAddress();
             }
         });
 
         this.appState.controls.state = "flat";
     }
 
-    /**
-     * @param {number} transition 
-     * @param {number|undefined} targetY 
-     */
     setFreeFlight(transition = 0, targetY = undefined) {
         if (!this.mapViewer.map) return;
         if (!this.mapViewer.map.data.freeFlightView) return;
@@ -587,7 +556,7 @@ export class BlueMapApp {
         }, transition, finished => {
             if (finished){
                 cm.controls = this.freeFlightControls;
-                // this.updatePageAddress();
+                this.updatePageAddress();
             }
         });
 
@@ -685,6 +654,7 @@ export class BlueMapApp {
         this.updateControlsSettings();
         this.setTheme(this.loadUserSetting("theme", this.appState.theme));
         this.setScreenshotClipboard(this.loadUserSetting("screenshotClipboard", this.appState.screenshot.clipboard));
+        await setLanguage(this.loadUserSetting("lang", i18n.locale.value));
         this.setChunkBorders(this.loadUserSetting("chunkBorders", this.mapViewer.data.uniforms.chunkBorders.value))
         this.setDebug(this.loadUserSetting("debug", this.appState.debug));
 
@@ -706,6 +676,7 @@ export class BlueMapApp {
         this.saveUserSetting("showZoomButtons", this.appState.controls.showZoomButtons);
         this.saveUserSetting("theme", this.appState.theme);
         this.saveUserSetting("screenshotClipboard", this.appState.screenshot.clipboard);
+        this.saveUserSetting("lang", i18n.locale.value);
         this.saveUserSetting("chunkBorders", this.mapViewer.data.uniforms.chunkBorders.value);
         this.saveUserSetting("debug", this.appState.debug);
 
@@ -728,7 +699,7 @@ export class BlueMapApp {
 
     cameraMoved = () => {
         if (this.hashUpdateTimeout) clearTimeout(this.hashUpdateTimeout);
-        // this.hashUpdateTimeout = setTimeout(this.updatePageAddress, 1500);
+        this.hashUpdateTimeout = setTimeout(this.updatePageAddress, 1500);
         this.lastCameraMove = Date.now();
     }
 
@@ -747,90 +718,80 @@ export class BlueMapApp {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    // updatePageAddress = () => {
-    //     let hash = "#";
+    updatePageAddress = () => {
+        let hash = "#";
 
-    //     if (this.mapViewer.map) {
-    //         hash += this.mapViewer.map.data.id;
+        if (this.mapViewer.map) {
+            hash += this.mapViewer.map.data.id;
 
-    //         let controls = this.mapViewer.controlsManager;
-    //         hash += ":" + round(controls.position.x, 0);
-    //         hash += ":" + round(controls.position.y, 0);
-    //         hash += ":" + round(controls.position.z, 0);
-    //         hash += ":" + round(controls.distance, 0);
-    //         hash += ":" + round(controls.rotation, 2);
-    //         hash += ":" + round(controls.angle, 2);
-    //         hash += ":" + round(controls.tilt, 2);
-    //         hash += ":" + round(controls.ortho, 0);
-    //         hash += ":" + this.appState.controls.state;
-    //     }
+            let controls = this.mapViewer.controlsManager;
+            hash += ":" + round(controls.position.x, 0);
+            hash += ":" + round(controls.position.y, 0);
+            hash += ":" + round(controls.position.z, 0);
+            hash += ":" + round(controls.distance, 0);
+            hash += ":" + round(controls.rotation, 2);
+            hash += ":" + round(controls.angle, 2);
+            hash += ":" + round(controls.tilt, 2);
+            hash += ":" + round(controls.ortho, 0);
+            hash += ":" + this.appState.controls.state;
+        }
 
-    //     history.replaceState(undefined, undefined, hash);
-    // }
+        history.replaceState(undefined, undefined, hash);
 
-    // loadPageAddress = async () => {
-    //     let hash = window.location.hash?.substring(1) || this.settings.startLocation || "";
-    //     let values = hash.split(":");
+        document.title = i18n.t("pageTitle", {
+            map: this.mapViewer.map ? this.mapViewer.map.data.name : "?",
+            version: this.settings.version
+        });
+    }
 
-    //     // only world is provided
-    //     if (values.length === 1 && (!this.mapViewer.map || this.mapViewer.map.data.id !== values[0])) {
-    //         try {
-    //             await this.switchMap(values[0]);
-    //         } catch (e) {
-    //             return false;
-    //         }
+    loadPageAddress = async () => {
+        let hash = window.location.hash?.substring(1) || this.settings.startLocation || "";
+        let values = hash.split(":");
 
-    //         return true;
-    //     }
+        // only world is provided
+        if (values.length === 1 && (!this.mapViewer.map || this.mapViewer.map.data.id !== values[0])) {
+            try {
+                await this.switchMap(values[0]);
+            } catch (e) {
+                return false;
+            }
 
-    //     // load full location
-    //     if (values.length !== 10) return false;
+            return true;
+        }
 
-    //     let controls = this.mapViewer.controlsManager;
-    //     controls.controls = null;
+        // load full location
+        if (values.length !== 10) return false;
 
-    //     if (!this.mapViewer.map || this.mapViewer.map.data.id !== values[0]) {
-    //         try {
-    //             await this.switchMap(values[0]);
-    //         } catch (e) {
-    //             return false;
-    //         }
-    //     }
+        let controls = this.mapViewer.controlsManager;
+        controls.controls = null;
 
-    //     switch (values[9]) {
-    //         case "flat" : this.setFlatView(0); break;
-    //         case "free" : this.setFreeFlight(0, controls.position.y); break;
-    //         default : this.setPerspectiveView(0); break;
-    //     }
+        if (!this.mapViewer.map || this.mapViewer.map.data.id !== values[0]) {
+            try {
+                await this.switchMap(values[0]);
+            } catch (e) {
+                return false;
+            }
+        }
 
-    //     controls.position.x = parseFloat(values[1]);
-    //     controls.position.y = parseFloat(values[2]);
-    //     controls.position.z = parseFloat(values[3]);
-    //     controls.distance = parseFloat(values[4]);
-    //     controls.rotation = parseFloat(values[5]);
-    //     controls.angle = parseFloat(values[6]);
-    //     controls.tilt = parseFloat(values[7]);
-    //     controls.ortho = parseFloat(values[8]);
+        switch (values[9]) {
+            case "flat" : this.setFlatView(0); break;
+            case "free" : this.setFreeFlight(0, controls.position.y); break;
+            default : this.setPerspectiveView(0); break;
+        }
 
-    //     // this.updatePageAddress();
-    //     this.mapViewer.updateLoadedMapArea();
+        controls.position.x = parseFloat(values[1]);
+        controls.position.y = parseFloat(values[2]);
+        controls.position.z = parseFloat(values[3]);
+        controls.distance = parseFloat(values[4]);
+        controls.rotation = parseFloat(values[5]);
+        controls.angle = parseFloat(values[6]);
+        controls.tilt = parseFloat(values[7]);
+        controls.ortho = parseFloat(values[8]);
 
-    //     return true;
-    // }
-
-    setPositions(x, y, z, distance = 0, rotation = 0, angle = 0, tilt = 1.5, ortho = 0) {
-        const controls = this.mapViewer.controlsManager;
-
-        controls.position.x = x;
-        controls.position.y = y;
-        controls.position.z = z;
-        controls.distance = distance;
-        controls.rotation = rotation;
-        controls.angle = angle;
-        controls.tilt = tilt;
-        controls.ortho = ortho;
-
+        this.updatePageAddress();
         this.mapViewer.updateLoadedMapArea();
+
+        return true;
     }
 
     mapInteraction = event => {

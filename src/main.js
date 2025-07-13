@@ -27,6 +27,7 @@ import * as Vue from 'vue';
 import App from './App.vue';
 import * as BlueMap from "./js/BlueMap";
 import {BlueMapApp} from "./js/BlueMapApp";
+import {i18nModule, loadLanguageSettings} from "./i18n";
 
 // utils
 String.prototype.includesCI = function (val) {
@@ -36,18 +37,20 @@ String.prototype.includesCI = function (val) {
 // bluemap app
 async function load() {
   try {
-    const bluemap = new BlueMapApp(document.getElementById("map-container"), {
-      defaultMap: "overworld",
-      showPopupMarker: false
-    });
+    const bluemap = new BlueMapApp(document.getElementById("map-container"));
     window.bluemap = bluemap;
     window.BlueMap = BlueMap;
 
     // init vue
     const vue = Vue.createApp(App, {
+      i18nModule,
       render: h => h(App)
     });
     vue.config.globalProperties.$bluemap = bluemap;
+
+    // load languages
+    vue.use(i18nModule);
+    await loadLanguageSettings()
 
     // load bluemap next tick (to let the assets load first)
     const app = vue.mount('#app');
@@ -61,7 +64,7 @@ async function load() {
       <div>
         <img src="assets/logo.png" alt="bluemap logo">
         <div class="bm-app-err-main">Failed to load BlueMap webapp!</div>
-        <div class="bm-app-err-hint">Make sure you have <a href="https://get.webgl.org/">WebGL</a> enabled on your browser.</div>
+        <div class="bm-app-err-hint">Make sure you have <a href="https://get.webgl.org/webgl2/">WebGL2</a> enabled on your browser.</div>
       </div>
     </div>
   `;

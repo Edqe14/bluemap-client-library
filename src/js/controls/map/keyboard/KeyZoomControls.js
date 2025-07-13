@@ -25,6 +25,7 @@
 
 import {MathUtils} from "three";
 import {KeyCombination} from "../../KeyCombination";
+import {MapControls} from "../MapControls";
 
 export class KeyZoomControls {
 
@@ -44,8 +45,7 @@ export class KeyZoomControls {
      * @param speed {number}
      * @param stiffness {number}
      */
-    constructor(target, speed, stiffness, options = {}) {
-        this.options = options;
+    constructor(target, speed, stiffness) {
         this.target = target;
         this.manager = null;
 
@@ -89,6 +89,7 @@ export class KeyZoomControls {
         smoothing = MathUtils.clamp(smoothing, 0, 1);
 
         this.manager.distance *= Math.pow(1.5, this.deltaZoom * smoothing * this.speed * delta * 0.06);
+        this.manager.angle = Math.min(this.manager.angle, MapControls.getMaxPerspectiveAngleForDistance(this.manager.distance));
 
         this.deltaZoom *= 1 - smoothing;
         if (Math.abs(this.deltaZoom) < 0.0001) {
@@ -101,14 +102,10 @@ export class KeyZoomControls {
      */
     onKeyDown = evt => {
         if (KeyCombination.oneDown(evt, ...KeyZoomControls.KEYS.IN)){
-            if (this.options.disableMovement) return;
-
             this.in = true;
             evt.preventDefault();
         }
         if (KeyCombination.oneDown(evt, ...KeyZoomControls.KEYS.OUT)){
-            if (this.options.disableMovement) return;
-
             this.out = true;
             evt.preventDefault();
         }

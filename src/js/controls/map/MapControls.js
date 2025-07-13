@@ -28,7 +28,7 @@ import {MouseZoomControls} from "./mouse/MouseZoomControls";
 import {MouseRotateControls} from "./mouse/MouseRotateControls";
 import {MouseAngleControls} from "./mouse/MouseAngleControls";
 import {MathUtils, Vector2, Vector3} from "three";
-import {Manager, Pan, Pinch, Rotate, Tap, DIRECTION_ALL, DIRECTION_VERTICAL} from "hammerjs";
+import {DIRECTION_ALL, DIRECTION_VERTICAL, Manager, Pan, Pinch, Rotate, Tap} from "hammerjs";
 import {softClamp} from "../../util/Utils";
 import {MapHeightControls} from "./MapHeightControls";
 import {KeyMoveControls} from "./keyboard/KeyMoveControls";
@@ -39,10 +39,10 @@ import {TouchMoveControls} from "./touch/TouchMoveControls";
 import {TouchRotateControls} from "./touch/TouchRotateControls";
 import {TouchAngleControls} from "./touch/TouchAngleControls";
 import {TouchZoomControls} from "./touch/TouchZoomControls";
-import {PlayerMarker} from "../../markers/PlayerMarker";
 import {reactive} from "vue";
 
 const HALF_PI = Math.PI * 0.5;
+const HALF_PI_DIV = 1 / HALF_PI;
 
 export class MapControls {
 
@@ -52,8 +52,7 @@ export class MapControls {
      * @param rootElement {Element}
      * @param scrollCaptureElement {Element}
      */
-    constructor(rootElement, scrollCaptureElement, options = {}) {
-        this.options = options;
+    constructor(rootElement, scrollCaptureElement) {
         this.rootElement = rootElement;
         this.scrollCaptureElement = scrollCaptureElement;
 
@@ -73,12 +72,10 @@ export class MapControls {
         this.mouseAngle = new MouseAngleControls(this.rootElement, 3, 0.3);
         this.mouseZoom = new MouseZoomControls(this.scrollCaptureElement, 1, 0.2);
 
-        if (options.enableKeyboardControls) {
-            this.keyMove = new KeyMoveControls(this.rootElement, 0.025, 0.2, this.options);
-            this.keyRotate = new KeyRotateControls(this.rootElement, 0.06, 0.15, this.options);
-            this.keyAngle = new KeyAngleControls(this.rootElement, 0.04, 0.15, this.options);
-            this.keyZoom = new KeyZoomControls(this.rootElement, 0.2, 0.15, this.options);
-        }
+        this.keyMove = new KeyMoveControls(this.rootElement, 0.025, 0.2);
+        this.keyRotate = new KeyRotateControls(this.rootElement, 0.06, 0.15);
+        this.keyAngle = new KeyAngleControls(this.rootElement, 0.04, 0.15);
+        this.keyZoom = new KeyZoomControls(this.rootElement, 0.2, 0.15);
 
         this.touchMove = new TouchMoveControls(this.rootElement, this.hammer, 1.5,0.3);
         this.touchRotate = new TouchRotateControls(this.hammer, 0.0174533, 0.3);
@@ -108,13 +105,11 @@ export class MapControls {
         this.mouseAngle.start(manager);
         this.mouseZoom.start(manager);
 
-        if (this.options.enableKeyboardControls) {
-            this.keyMove.start(manager);
-            this.keyRotate.start(manager);
-            this.keyAngle.start(manager);
-            this.keyZoom.start(manager);
-        }
-        
+        this.keyMove.start(manager);
+        this.keyRotate.start(manager);
+        this.keyAngle.start(manager);
+        this.keyZoom.start(manager);
+
         this.touchMove.start(manager);
         this.touchRotate.start(manager);
         this.touchAngle.start(manager);
@@ -134,12 +129,10 @@ export class MapControls {
         this.mouseAngle.stop();
         this.mouseZoom.stop();
 
-        if (this.options.enableKeyboardControls) {
-            this.keyMove.stop();
-            this.keyRotate.stop();
-            this.keyAngle.stop();
-            this.keyZoom.stop();
-        }
+        this.keyMove.stop();
+        this.keyRotate.stop();
+        this.keyAngle.stop();
+        this.keyZoom.stop();
 
         this.touchMove.stop();
         this.touchRotate.stop();
@@ -159,10 +152,7 @@ export class MapControls {
         // move
         MapControls._beforeMoveTemp.copy(this.manager.position);
         this.mouseMove.update(delta, map);
-
-        if (this.options.enableKeyboardControls) {
-            this.keyMove.update(delta, map);
-        }
+        this.keyMove.update(delta, map);
         this.touchMove.update(delta, map);
 
         // if moved, stop following the marker and give back control
@@ -177,25 +167,18 @@ export class MapControls {
 
         // zoom
         this.mouseZoom.update(delta, map);
-        if (this.options.enableKeyboardControls) {
-            this.keyZoom.update(delta, map);
-        }
+        this.keyZoom.update(delta, map);
         this.touchZoom.update(delta, map);
 
         this.manager.distance = softClamp(this.manager.distance, this.minDistance, this.maxDistance, 0.8);
 
-        // max angle for current distance
-        let maxAngleForZoom = this.getMaxPerspectiveAngleForDistance(this.manager.distance);
-
         // rotation
         this.mouseRotate.update(delta, map);
-        if (this.options.enableKeyboardControls) {
-            this.keyRotate.update(delta, map);
-        }
+        this.keyRotate.update(delta, map);
         this.touchRotate.update(delta, map);
 
         const rotating = this.mouseRotate.moving || this.touchRotate.moving ||
-            (this.keyRotate?.left ?? 0) || (this.keyRotate?.right ?? 0) 
+            this.keyRotate.left || this.keyRotate.right
 
         // snap rotation to north on orthographic view
         if (this.manager.ortho !== 0 && Math.abs(this.manager.rotation) < (rotating ? 0.05 : 0.3)) {
@@ -205,16 +188,13 @@ export class MapControls {
         // tilt
         if (this.manager.ortho === 0) {
             this.mouseAngle.update(delta, map);
-            if (this.options.enableKeyboardControls) {
-                this.keyAngle.update(delta, map);
-            }
+            this.keyAngle.update(delta, map);
             this.touchAngle.update(delta, map);
-            this.manager.angle = softClamp(this.manager.angle, 0, maxAngleForZoom, 0.8);
+            this.manager.angle = softClamp(this.manager.angle, 0, HALF_PI, 0.8);
         }
 
         // target height
         if (this.manager.ortho === 0 || this.manager.angle === 0) {
-            this.mapHeight.maxAngle = maxAngleForZoom;
             this.mapHeight.update(delta, map);
         }
     }
@@ -231,8 +211,13 @@ export class MapControls {
         this.touchZoom.reset();
     }
 
-    getMaxPerspectiveAngleForDistance(distance) {
+    static getMaxPerspectiveAngleForDistance(distance) {
         return MathUtils.clamp((1 - Math.pow(Math.max(distance - 5, 0.001) * 0.0005, 0.5)) * HALF_PI,0, HALF_PI)
+    }
+
+    // getMaxPerspectiveAngleForDistance but in reverse (its simple maths, they said)
+    static getMaxDistanceForPerspectiveAngle(angle) {
+        return Math.pow(-(angle * HALF_PI_DIV) + 1, 2) * 2000 + 5;
     }
 
     initializeHammer() {

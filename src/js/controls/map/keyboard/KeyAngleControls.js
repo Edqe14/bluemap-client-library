@@ -25,6 +25,8 @@
 
 import {MathUtils} from "three";
 import {KeyCombination} from "../../KeyCombination";
+import {softMax} from "../../../util/Utils";
+import {MapControls} from "../MapControls";
 
 export class KeyAngleControls {
 
@@ -46,8 +48,7 @@ export class KeyAngleControls {
      * @param speed {number}
      * @param stiffness {number}
      */
-    constructor(target, speed, stiffness, options = {}) {
-        this.options = {};
+    constructor(target, speed, stiffness) {
         this.target = target;
         this.manager = null;
 
@@ -91,6 +92,7 @@ export class KeyAngleControls {
         smoothing = MathUtils.clamp(smoothing, 0, 1);
 
         this.manager.angle += this.deltaAngle * smoothing * this.speed * delta * 0.06;
+        this.manager.angle = softMax(this.manager.angle, MapControls.getMaxPerspectiveAngleForDistance(this.manager.distance), 0.8);
 
         this.deltaAngle *= 1 - smoothing;
         if (Math.abs(this.deltaAngle) < 0.0001) {
@@ -103,14 +105,10 @@ export class KeyAngleControls {
      */
     onKeyDown = evt => {
         if (KeyCombination.oneDown(evt, ...KeyAngleControls.KEYS.UP)){
-            if (this.options.disableMovement) return;
-
             this.up = true;
             evt.preventDefault();
         }
         if (KeyCombination.oneDown(evt, ...KeyAngleControls.KEYS.DOWN)){
-            if (this.options.disableMovement) return;
-
             this.down = true;
             evt.preventDefault();
         }

@@ -26,6 +26,7 @@ import {Marker} from "./markers/Marker";
 import {CSS2DObject} from "./util/CSS2DRenderer";
 import {animate, htmlToElement} from "./util/Utils";
 import {BoxGeometry, MeshBasicMaterial, Mesh, Vector2} from "three";
+import {i18n} from "../i18n";
 
 export class PopupMarker extends Marker {
 
@@ -69,6 +70,10 @@ export class PopupMarker extends Marker {
         return true;
     }
 
+    static blockClipboardFormat  = (pos, isHires) => isHires ? `${pos.x} ${pos.y} ${pos.z}` : `${pos.x} ${pos.z}`;
+    static chunkClipboardFormat  = (pos, isHires) => isHires ? `${pos.x} ${pos.y} ${pos.z}` : `${pos.x} ${pos.z}`;
+    static regionClipboardFormat = pos => `r.${pos.x}.${pos.y}.mca`
+
     onMapInteraction = evt => {
         let isHires = true;
         let int = evt.detail.hiresHit;
@@ -95,8 +100,10 @@ export class PopupMarker extends Marker {
 
         if (isHires) {
             this.element.innerHTML = `
-                <div class="group">
-                    <div class="label">Block:</div>
+                <div class="group" 
+                     data-tooltip="${i18n.t("blockTooltip.clipboard")}"
+                     onclick="navigator.clipboard.writeText('${PopupMarker.blockClipboardFormat(this.position, true)}')" >
+                    <div class="label">${i18n.t("blockTooltip.block")}:</div>
                     <div class="content">
                         <div class="entry"><span class="label">x: </span><span class="value">${this.position.x}</span></div>
                         <div class="entry"><span class="label">y: </span><span class="value">${this.position.y}</span></div>
@@ -106,8 +113,10 @@ export class PopupMarker extends Marker {
             `;
         } else {
             this.element.innerHTML = `
-                <div class="group">
-                    <div class="label">Position:</div>
+                <div class="group"
+                     data-tooltip="${i18n.t("blockTooltip.clipboard")}"
+                     onclick="navigator.clipboard.writeText('${PopupMarker.blockClipboardFormat(this.position, false)}')" >
+                    <div class="label">${i18n.t("blockTooltip.position")}:</div>
                     <div class="content">
                         <div class="entry"><span class="label">x: </span><span class="value">${this.position.x}</span></div>
                         <div class="entry"><span class="label">z: </span><span class="value">${this.position.z}</span></div>
@@ -121,25 +130,47 @@ export class PopupMarker extends Marker {
             let regionCoords = new Vector2(this.position.x, this.position.z).divideScalar(512).floor();
             let regionFile = `r.${regionCoords.x}.${regionCoords.y}.mca`;
 
+            if (isHires) {
+                this.element.innerHTML += `
+                    <hr>
+                    <div class="group"
+                         data-tooltip="${i18n.t("blockTooltip.clipboard")}"
+                         onclick="navigator.clipboard.writeText('${PopupMarker.chunkClipboardFormat(chunkCoords, true)}')" >
+                        <div class="label">${i18n.t("blockTooltip.chunk")}:</div>
+                        <div class="content">
+                            <div class="entry"><span class="label">x: </span><span class="value">${chunkCoords.x}</span></div>
+                            <div class="entry"><span class="label">y: </span><span class="value">${chunkCoords.y}</span></div>
+                            <div class="entry"><span class="label">z: </span><span class="value">${chunkCoords.z}</span></div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                this.element.innerHTML += `
+                    <hr>
+                    <div class="group"
+                         data-tooltip="${i18n.t("blockTooltip.clipboard")}"
+                         onclick="navigator.clipboard.writeText('${PopupMarker.chunkClipboardFormat(chunkCoords, false)}')" >
+                        <div class="label">${i18n.t("blockTooltip.chunk")}:</div>
+                        <div class="content">
+                            <div class="entry"><span class="label">x: </span><span class="value">${chunkCoords.x}</span></div>
+                            <div class="entry"><span class="label">z: </span><span class="value">${chunkCoords.z}</span></div>
+                        </div>
+                    </div>
+                `;
+            }
+
             this.element.innerHTML += `
                 <hr>
-                <div class="group">
-                    <div class="label">Chunk:</div>
-                    <div class="content">
-                        <div class="entry"><span class="label">x: </span><span class="value">${chunkCoords.x}</span></div>
-                        <div class="entry"><span class="label">y: </span><span class="value">${chunkCoords.y}</span></div>
-                        <div class="entry"><span class="label">z: </span><span class="value">${chunkCoords.z}</span></div>
-                    </div>
-                </div>
-                <hr>
-                <div class="group">
-                    <div class="label">Region:</div>
+                <div class="group"
+                     data-tooltip="${i18n.t("blockTooltip.clipboard")}"
+                     onclick="navigator.clipboard.writeText('${PopupMarker.regionClipboardFormat(regionCoords)}')" >
+                    <div class="label">${i18n.t("blockTooltip.region.region")}:</div>
                     <div class="content">
                         <div class="entry"><span class="label">x: </span><span class="value">${regionCoords.x}</span></div>
                         <div class="entry"><span class="label">z: </span><span class="value">${regionCoords.y}</span></div>
                     </div>
                     <div class="content">
-                        <div class="entry"><span class="label">File: </span><span class="value">${regionFile}</span></div>
+                        <div class="entry"><span class="label">${i18n.t("blockTooltip.region.file")}: </span><span class="value">${regionFile}</span></div>
                     </div>
                 </div>
             `;
@@ -155,10 +186,10 @@ export class PopupMarker extends Marker {
                 this.element.innerHTML += `
                     <hr>
                     <div class="group">
-                        <div class="label">Light:</div>
+                        <div class="label">${i18n.t("blockTooltip.light.light")}:</div>
                         <div class="content">
-                            <div class="entry"><span class="label">Sun: </span><span class="value">${sunlight}</span></div>
-                            <div class="entry"><span class="label">Block: </span><span class="value">${blocklight}</span></div>
+                            <div class="entry"><span class="label">${i18n.t("blockTooltip.light.sun")}: </span><span class="value">${sunlight}</span></div>
+                            <div class="entry"><span class="label">${i18n.t("blockTooltip.light.block")}: </span><span class="value">${blocklight}</span></div>
                         </div>
                     </div>
                 `;

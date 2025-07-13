@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "vite --host",
-    "build": "vite build",
+    "build": "vite build && node copy-output.js",
     "preview": "vite preview",
-    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore",
+    "update-code": "rimraf src && degit BlueMap-Minecraft/BlueMap/common/webapp/src src"
   },
   "dependencies": {
     "hammerjs": "^2.0.8",
@@ -17,9 +18,11 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.5.3",
+    "degit": "^2.8.4",
     "eslint": "~8.22.0",
     "eslint-plugin-vue": "^9.3.0",
     "lightningcss": "^1.28.2",
+    "rimraf": "^6.0.1",
     "sass": "^1.57.0",
     "terser": "^5.36.0",
     "vite": "^4.5.4",

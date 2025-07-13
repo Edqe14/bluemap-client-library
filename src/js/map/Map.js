@@ -202,9 +202,9 @@ export class Map {
 					lodCount: worldSettings.lowres.lodCount !== undefined ? worldSettings.lowres.lodCount : this.data.lowres.lodCount
 				};
 
-				this.data.perspectiveView = worldSettings.perspectiveView !== undefined ? worldSettings.perspectiveView : true;
-				this.data.flatView = worldSettings.flatView !== undefined ? worldSettings.flatView : true;
-				this.data.freeFlightView = worldSettings.freeFlightView !== undefined ? worldSettings.freeFlightView : true;
+				this.data.perspectiveView = worldSettings.perspectiveView !== undefined ? worldSettings.perspectiveView : this.data.perspectiveView;
+				this.data.flatView = worldSettings.flatView !== undefined ? worldSettings.flatView : this.data.flatView;
+				this.data.freeFlightView = worldSettings.freeFlightView !== undefined ? worldSettings.freeFlightView : this.data.freeFlightView;
 
 				this.data.views = [];
 				if (this.data.perspectiveView) this.data.views.push("perspective");
